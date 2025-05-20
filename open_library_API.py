@@ -1,10 +1,8 @@
-#building a simple pipeline that will extract data from a public API, prepares it, and loads it into a CSV file.
-
 import requests  # For making HTTP requests to APIs
 import pandas as pd  # For handling and manipulating tabular data
-import os  # For interacting with the operating system
 from datetime import datetime  # For working with date and time
 import re  # For regular expression operations
+from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 
 def fetch_books_by_subject(subject, limit=20):
@@ -106,8 +104,9 @@ def generate_knowledge_graph_triples(df):
 
 
 def main():
-    # 1. Extract data from API
-    subject = "python"  # You can change this to any subject
+    from neo4j_connection import Neo4jConnector
+    # 1. Extract data from API and returns a JSON response
+    subject = input("Enter the subject to fetch books for: ")  # Prompt user for subject
     api_data = fetch_books_by_subject(subject)
 
     if not api_data:
@@ -144,12 +143,20 @@ def main():
     if len(triples) > 10:
         print(f"  ... and {len(triples) - 10} more triples")
 
-    print("\nNext steps would be to load these triples into your knowledge graph database.")
+    print("\nThese triples are ready to be loaded into the knowledge graph database.")
+
+    # Initialize Neo4j connection
+    connector = Neo4jConnector(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
+
+    if connector.connect():
+        # Load the cleaned data into Neo4j
+        connector.clear_database()  # Optional: Clear the database before loading
+        connector.create_constraints()
+        connector.load_books(cleaned_df)
+
+        connector.close()
 
 
 if __name__ == "__main__":
     main()
-
-
-
 
